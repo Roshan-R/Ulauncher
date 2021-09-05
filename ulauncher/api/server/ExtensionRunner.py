@@ -50,12 +50,12 @@ class ExtensionRunner:
         """
         Finds all extensions in `EXTENSIONS_DIR` and runs them
         """
-        for id, _ in find_extensions(self.extensions_dir):
+        for ex_id, _ in find_extensions(self.extensions_dir):
             try:
-                self.run(id)
+                self.run(ex_id)
             # pylint: disable=broad-except
             except Exception as e:
-                logger.error("Couldn't run '%s'. %s: %s", id, type(e).__name__, e)
+                logger.error("Couldn't run '%s'. %s: %s", ex_id, type(e).__name__, e)
 
     def run(self, extension_id):
         """
@@ -80,16 +80,15 @@ class ExtensionRunner:
         """
         cmd = [sys.executable, os.path.join(self.extensions_dir, extension_id, 'main.py')]
         env = os.environ.copy()
-        env['ULAUNCHER_WS_API'] = self.extension_server.generate_ws_url(extension_id)
         env['PYTHONPATH'] = ':'.join(filter(bool, [ULAUNCHER_APP_DIR, os.getenv('PYTHONPATH')]))
 
         if self.verbose:
             env['VERBOSE'] = '1'
 
         if self.dont_run_extensions:
-            args = [env.get('VERBOSE', ''), env['ULAUNCHER_WS_API'], env['PYTHONPATH']]
+            args = [env.get('VERBOSE', ''), env['PYTHONPATH']]
             args.extend(cmd)
-            run_cmd = 'VERBOSE={} ULAUNCHER_WS_API={} PYTHONPATH={} {} {}'.format(*args)
+            run_cmd = 'VERBOSE={} PYTHONPATH={} {} {}'.format(*args)
             logger.warning('Copy and run the following command to start %s', extension_id)
             logger.warning(run_cmd)
             self.set_extension_error(extension_id, ExtRunErrorName.NoExtensionsFlag, run_cmd)
@@ -98,7 +97,7 @@ class ExtensionRunner:
 
         while True:
             t_start = time()
-            proc = Popen(cmd, env=env, stderr=PIPE)
+            proc = Popen(cmd, env=env, stderr=PIPE, start_new_session=True)
             lasterr = ""
             logger.info('Extension "%s" started. PID %s', extension_id, proc.pid)
             self.extension_procs[extension_id] = proc

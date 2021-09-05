@@ -10,6 +10,11 @@ class BaseEvent:
         return dumps(self) != dumps(other)
 
 
+class RegisterEvent(BaseEvent):
+    def __init__(self, extension_id):
+        self.extension_id = extension_id
+
+
 class KeywordQueryEvent(BaseEvent):
     """
     Is triggered when user enters query that starts with your keyword + Space

@@ -2,9 +2,10 @@ import logging
 from functools import partial
 from ulauncher.api.server.port_finder import find_unused_port
 from ulauncher.api.server.ExtensionController import ExtensionController
-from ulauncher.utils.SimpleWebSocketServer import SimpleWebSocketServer
-from ulauncher.utils.decorator.run_async import run_async
+from ulauncher.api.shared.socket_path import get_socket_path
+from ulauncher.api.shared.event import RegisterEvent
 from ulauncher.utils.decorator.singleton import singleton
+from ulauncher.utils.unix_stream import Server
 
 logger = logging.getLogger(__name__)
 
@@ -17,50 +18,34 @@ class ExtensionServer:
         return cls()
 
     def __init__(self):
-        self.hostname = '127.0.0.1'
-        self.port = None
-        self.ws_server = None
+        self.server = None
+        self.socket_path = get_socket_path()
         self.controllers = {}
-
-    def generate_ws_url(self, extension_id):
-        """
-        Returns WebSocket URL for given `extension_id`
-
-        :rtype: str
-        """
-        if not self.is_running():
-            raise ServerIsNotRunningError()
-
-        return 'ws://%s:%s/%s' % (self.hostname, self.port, extension_id)
 
     def start(self):
         """
-        Starts WS server
+        Starts extension server
         """
-        if self.ws_server:
+        if self.server:
             raise ServerIsRunningError()
 
-        self._start_thread()
+        self.server = Server()
+        self.server.connect("message_received", self.handle_message)
+        self.server.set_socket_path(self.socket_path)
 
-    @run_async(daemon=True)
-    def _start_thread(self):
-        self.port = self.port or find_unused_port(5054)
-        logger.info('Starting WS server on port %s', self.port)
-        self.ws_server = SimpleWebSocketServer(self.hostname,
-                                               self.port,
-                                               partial(ExtensionController, self.controllers))
-        self.ws_server.serveforever()
-        self.ws_server = None
-        logger.warning('WS server exited')
+    def handle_message(self, server, framer, event):
+        if isinstance(event, RegisterEvent):
+            ExtensionController(self.controllers, framer, event.extension_id)
 
     def stop(self):
         """
-        Stops WS server
+        Stops extension server
         """
         if not self.is_running():
             raise ServerIsNotRunningError()
 
-        self.ws_server.close()
+        self.server.close()
+        self.server = None
 
     def is_running(self):
         """
