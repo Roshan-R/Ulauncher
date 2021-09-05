@@ -7,12 +7,13 @@ import gi
 
 gi.require_versions({
     "GLib": "2.0",
+    "Gio": "2.0",
 })
-from gi.repository import GLib
+from gi.repository import GLib, Gio
 
 from ulauncher.api.shared.event import SystemExitEvent, RegisterEvent
 from ulauncher.api.shared.socket_path import get_socket_path
-from ulauncher.utils.unix_stream import Client as UnixClient
+from ulauncher.utils.framer import PickleFramer
 
 logger = logging.getLogger(__name__)
 
@@ -22,34 +23,37 @@ class Client:
     Instantiated in extension code and manages data transfer from/to Ulauncher app
 
     :param ~ulauncher.api.client.Extension extension:
-    :param str ws_api_url: uses env. var `ULAUNCHER_WS_API` by default
     """
 
     def __init__(self, extension):
         self.socket_path = get_socket_path()
         self.extension = extension
+        self.client = Gio.SocketClient()
         self.unix_client = None
 
     def connect(self):
         """
-        Connects to WS server and blocks thread
+        Connects to the extension server and blocks thread
         """
-        self.unix_client = UnixClient()
-        self.unix_client.connect("message_received", self.on_message)
-        self.unix_client.connect("closed", self.on_close)
-        self.unix_client.set_socket_path(self.socket_path)
+        self.conn = self.client.connect(Gio.UnixSocketAddress.new(self.socket_path), None)
+        if not self.conn:
+            raise RuntimeError(f"Failed to connect to socket_path {self.socket_path}" )
+        self.framer = PickleFramer()
+        self.framer.connect("message_parsed", self.on_message)
+        self.framer.connect("closed", self.on_close)
+        self.framer.set_connection(self.conn)
         self.send(RegisterEvent(self.extension.extension_id))
 
         mainloop = GLib.MainLoop.new(None, None)
         mainloop.run()
 
     # pylint: disable=unused-argument
-    def on_message(self, client, framer, event):
+    def on_message(self, framer, event):
         """
         Parses message from Ulauncher and triggers extension event
 
-        :param websocket.WebSocketApp ws:
-        :param str message:
+        :param ulauncher.utils.framer.PickleFramer framer:
+        :param ulauncher.api.shared.events.Event event:
         """
         logger.debug('Incoming event %s', type(event).__name__)
         try:
@@ -58,13 +62,13 @@ class Client:
         except Exception:
             traceback.print_exc(file=sys.stderr)
 
-    def on_close(self, client):
+    def on_close(self, framer):
         """
         Terminates extension process on client disconnect.
 
         Triggers :class:`~ulauncher.api.shared.event.SystemExitEvent` for graceful shutdown
 
-        :param websocket.WebSocketApp ws:
+        :param ulauncher.utils.framer.PickleFramer framer:
         """
         logger.warning("Connection closed. Exiting")
         self.extension.trigger_event(SystemExitEvent())
@@ -78,4 +82,4 @@ class Client:
         :param ~ulauncher.api.shared.Response.Response response:
         """
         logger.debug('Send message %s', response)
-        self.unix_client.send(response)
+        self.framer.send(response)
