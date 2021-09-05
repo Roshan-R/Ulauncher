@@ -71,10 +71,7 @@ def is_wayland_compatibility_on():
     Set hotkey in OS Settings > Devices > Keyboard > Add Hotkey > Command: ulauncher-toggle
     GDK_BACKEND is typically unset in Wayland sessions to allow GTK apps to self-select
     """
-    return is_wayland() and (
-        gdk_backend() == '' 
-        or gdk_backend().lower().startswith('wayland')
-    )
+    return is_wayland() and (gdk_backend() == '' or gdk_backend().lower().startswith('wayland'))
 
 
 def gdk_backend():
@@ -120,7 +117,7 @@ def get_default_shortcuts():
         "id": str(uuid4()),
         "name": "Stack Overflow",
         "keyword": "so",
-        "cmd": "http://stackoverflow.com/search?q=%s",
+        "cmd": "https://stackoverflow.com/search?q=%s",
         "icon": get_data_file('media/stackoverflow-icon.svg'),
         "is_default_search": True,
         "run_without_argument": False,

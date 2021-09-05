@@ -6,7 +6,7 @@ help () {
   ${bold}./ul init-dev-env
     ${dim}Installs Ulauncher data (icons, static files for preferences, etc.) to '~/.local/share/ulauncher/'${normal}
 
-  ${bold}./ul cleanup-dev-evn
+  ${bold}./ul cleanup-dev-env
     ${dim}Removes files installed by './ul init-dev-env'. Also removes cache files, but not configs${normal}
 
   ${bold}./ul run
@@ -64,8 +64,11 @@ The commands below are useful for maintainers:
   ${bold}./ul build-preferences
     ${dim}Builds JS/HTML/CSS files for Preferences UI${normal}
 
-  ${bold}./ul make-release
-    ${dim}Releases a new version of Ulauncher${normal}
+  ${bold}./ul tag-release
+    ${dim} Wrapper script to tag a new release and help you make the change note${normal}
+
+  ${bold}./ul build-release
+    ${dim}[Travis CI only] script to build the tag/release and upload the package files to it, and distro repositories ${normal}
 
   ${bold}./ul travis-cli-container
     ${dim}Takes you into travis-cli container. Useful for updating .travis.yml${normal}

@@ -3,11 +3,11 @@
 #############################
 # Build tar.gz in a container
 #############################
-make-release() {
+build-release() {
     # Args:
     # $1 version
 
-    export VERSION=$(fix-version-format "$1")
+    export VERSION=$1
     if [ -z "$VERSION" ]; then
         echo "First argument should be version"
         exit 1
@@ -18,12 +18,19 @@ make-release() {
     set -e
 
     create_deb
-    create_rpms
-    launchpad_upload
-    aur_update
+
+    # RPMs deactivated for now
+    # create_rpms
+
+    # Upload if tag doesn't contain "test"
+    if [[ $(echo "$VERSION" | tr '[:upper:]' '[:lower:]') != *test* ]]; then
+        launchpad_upload
+        aur_update
+    fi
 }
 
 create_deb() {
+    DEB_VERSION=$(echo "$VERSION" | tr "-" "~")
     step1="ln -s /var/node_modules data/preferences" # take node modules from cache
     step2="ln -s /var/bower_components data/preferences"
     step3="./ul test"
@@ -39,7 +46,7 @@ create_deb() {
         bash -c "$step1 && $step2 && $step3 && $step4 && $step5"
     set +x
     docker cp ulauncher-deb:/tmp/ulauncher_$VERSION.tar.gz .
-    docker cp ulauncher-deb:/tmp/ulauncher_${VERSION}_all.deb .
+    docker cp "ulauncher-deb:/tmp/ulauncher_${DEB_VERSION}_all.deb" "ulauncher_${VERSION}_all.deb"
     docker rm ulauncher-deb
 }
 
@@ -78,12 +85,12 @@ aur_update() {
         -w $workdir \
         -v $(pwd):$workdir \
         $ARCH_BUILD_IMAGE \
-        bash -c "UPDATE_STABLE=1 ./ul aur-update $VERSION"
+        bash -c "./ul aur-update $VERSION"
 }
 
 launchpad_upload() {
-    # check if release name contains beta or dev to decide which PPA to use
-    if echo "$VERSION" | grep -q beta; then
+    # check if release name contains prerelease-separator "-" to decide which PPA to use
+    if [[ "$VERSION" == *-* ]]; then
         PPA="agornostal/ulauncher-dev"
     else
         PPA="agornostal/ulauncher"

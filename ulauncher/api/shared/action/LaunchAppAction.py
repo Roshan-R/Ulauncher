@@ -1,8 +1,10 @@
 import logging
+import os
 import subprocess
 import re
 import shlex
 import shutil
+from pathlib import Path
 
 from ulauncher.utils.desktop.reader import read_desktop_file
 from ulauncher.utils.Settings import Settings
@@ -28,6 +30,7 @@ class LaunchAppAction(BaseAction):
 
     def run(self):
         app = read_desktop_file(self.filename)
+        app_id = Path(self.filename).with_suffix('').stem
         exec = app.get_string('Exec')
         if not exec:
             logger.error("No command to run %s", self.filename)
@@ -35,19 +38,35 @@ class LaunchAppAction(BaseAction):
             # strip field codes %f, %F, %u, %U, etc
             sanitized_exec = re.sub(r'\%[uUfFdDnNickvm]', '', exec).rstrip()
             terminal_exec = shlex.split(settings.get_property('terminal-command'))
-            if app.get_boolean('Terminal') and terminal_exec:
-                logger.info('Will run command in preferred terminal (%s)', terminal_exec)
-                sanitized_exec = terminal_exec + [shlex.quote(sanitized_exec)]
+            if app.get_boolean('Terminal'):
+                if terminal_exec:
+                    logger.info('Will run command in preferred terminal (%s)', terminal_exec)
+                    sanitized_exec = terminal_exec + [sanitized_exec]
+                else:
+                    sanitized_exec = ['gtk-launch', app_id]
             else:
                 sanitized_exec = shlex.split(sanitized_exec)
-            if hasSystemdRun:
+            if hasSystemdRun and not app.get_boolean('X-Ulauncher-Inherit-Scope'):
                 # Escape the Ulauncher cgroup, so this process isn't considered a child process of Ulauncher
                 # and doesn't die if Ulauncher dies/crashed/is terminated
-                sanitized_app = re.sub(r'[\W]', '-', app.get_name())
-                sanitized_exec = ['systemd-run', '--user', f'--slice={sanitized_app}.slice'] + sanitized_exec
+                # The slice name is super sensitive and must not contain invalid characters like space
+                # or trailing or leading hyphens
+                sanitized_app = re.sub(r'(^-*|[^\w^\-^\.]|-*$)', '', app_id)
+                sanitized_exec = [
+                    'systemd-run',
+                    '--user',
+                    '--scope',
+                    '--slice=app-{}'.format(sanitized_app)
+                ] + sanitized_exec
+
+            env = dict(os.environ.items())
+            # Make sure GDK apps aren't forced to use x11 on wayland due to ulauncher's need to run
+            # under X11 for proper centering.
+            env.pop("GDK_BACKEND", None)
+
             try:
                 logger.info('Run application %s (%s) Exec %s', app.get_name(), self.filename, exec)
                 # Start_new_session is only needed if systemd-run is missing
-                subprocess.Popen(sanitized_exec, start_new_session=True)
+                subprocess.Popen(sanitized_exec, env=env, start_new_session=True)
             except Exception as e:
                 logger.error('%s: %s', type(e).__name__, e)
