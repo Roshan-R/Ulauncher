@@ -164,14 +164,3 @@ def main():
         Gtk.main()
     except KeyboardInterrupt:
         logger.warning('On KeyboardInterrupt')
-
-    # workaround to make Ctrl+C quitting the app
-    # signal_handler = SignalHandler(window)
-    # gtk_thread = run_async(Gtk.main)()
-    # try:
-    #     while gtk_thread.is_alive() and not signal_handler.killed():
-    #         time.sleep(0.5)
-    # except KeyboardInterrupt:
-    #     logger.warning('On KeyboardInterrupt')
-    # finally:
-    #     Gtk.main_quit()

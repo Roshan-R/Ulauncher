@@ -11,7 +11,6 @@ gi.require_versions({
 })
 from gi.repository import Gio, GObject
 
-from ulauncher.api.server.port_finder import find_unused_port
 from ulauncher.api.server.ExtensionController import ExtensionController
 from ulauncher.api.shared.socket_path import get_socket_path
 from ulauncher.api.shared.event import RegisterEvent
