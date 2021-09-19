@@ -1,10 +1,14 @@
 import logging
 import os
-import subprocess
 import re
 import shlex
 import shutil
 from pathlib import Path
+import gi
+
+gi.require_version("GLib", "2.0")
+# pylint: disable=wrong-import-position
+from gi.repository import GLib
 
 from ulauncher.utils.desktop.reader import read_desktop_file
 from ulauncher.utils.Settings import Settings
@@ -66,7 +70,13 @@ class LaunchAppAction(BaseAction):
 
             try:
                 logger.info('Run application %s (%s) Exec %s', app.get_name(), self.filename, exec)
-                # Start_new_session is only needed if systemd-run is missing
-                subprocess.Popen(sanitized_exec, env=env, start_new_session=True)
+                envp = ["{}={}".format(k, v) for k, v in env.items()]
+                GLib.spawn_async(
+                    argv=sanitized_exec,
+                    envp=envp,
+                    flags=GLib.SpawnFlags.SEARCH_PATH_FROM_ENVP | GLib.SpawnFlags.SEARCH_PATH,
+                    # setsid is really only needed if systemd-run is missing, but doesn't hurt to have.
+                    child_setup=os.setsid
+                )
             except Exception as e:
                 logger.error('%s: %s', type(e).__name__, e)

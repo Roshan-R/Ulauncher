@@ -5,6 +5,10 @@ import logging
 import time
 from functools import partial
 from threading import Event
+# This xinit import must happen before any GUI libraries are initialized.
+# pylint: disable=wrong-import-position,wrong-import-order,ungrouped-imports,unused-import
+import ulauncher.utils.xinit  # noqa: F401
+
 import gi
 
 # Fixes issue #488
@@ -18,9 +22,9 @@ import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 
-from ulauncher.config import (get_version, get_options, is_wayland, is_wayland_compatibility_on,
-                              gdk_backend, CACHE_DIR, CONFIG_DIR, DATA_DIR)
+from ulauncher.config import get_version, get_options, CACHE_DIR, CONFIG_DIR, DATA_DIR
 from ulauncher.utils.decorator.run_async import run_async
+from ulauncher.utils.wayland import is_wayland, is_wayland_compatibility_on
 from ulauncher.ui.windows.UlauncherWindow import UlauncherWindow
 from ulauncher.ui.AppIndicator import AppIndicator
 from ulauncher.utils.Settings import Settings
@@ -101,17 +105,6 @@ def main():
     """
     Main function that starts everything
     """
-    if is_wayland() and gdk_backend().lower() != 'x11' and not is_wayland_compatibility_on():
-        warn = """
-                    [!]
-        Looks like you are in Wayland session
-        Please run Ulauncher with env var
-        GDK_BACKEND set to 'x11' like this:
-
-        GDK_BACKEND=x11 ulauncher
-        """
-        print(warn, file=sys.stderr)
-        sys.exit(1)
 
     # start DBus loop
     DBusGMainLoop(set_as_default=True)
