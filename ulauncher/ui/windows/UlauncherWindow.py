@@ -2,7 +2,6 @@
 import os
 import time
 import logging
-import threading
 
 import gi
 gi.require_version('Gtk', '3.0')
@@ -28,6 +27,7 @@ from ulauncher.api.server.ExtensionDownloader import ExtensionDownloader
 from ulauncher.utils.AppCacheDb import AppCacheDb
 from ulauncher.utils.Settings import Settings
 from ulauncher.utils.decorator.singleton import singleton
+from ulauncher.utils.timer import timer
 from ulauncher.utils.display import get_current_screen_geometry, get_primary_screen_geometry, get_monitor_scale_factor
 from ulauncher.utils.image_loader import load_image
 from ulauncher.utils.version_cmp import gtk_version_is_gte
@@ -151,8 +151,7 @@ class UlauncherWindow(Gtk.Window, WindowHelper):
         # this is a simple workaround to avoid hiding window
         # when user hits Alt+key combination or changes input source, etc.
         self.is_focused = False
-        t = threading.Timer(0.07, lambda: self.is_focused or self.hide())
-        t.start()
+        timer(0.07, lambda: self.is_focused or self.hide())
 
     def on_focus_in_event(self, *args):
         if self.settings.get_property('grab-mouse-pointer'):

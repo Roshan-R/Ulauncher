@@ -74,8 +74,6 @@ class ExtensionRunner:
         """
         * Validates manifest
         * Runs extension in a new process
-
-        :rtype: :class:`threading.Thread`
         """
         if self.is_running(extension_id):
             raise ExtensionIsRunningError('Extension ID: %s' % extension_id)
@@ -115,6 +113,7 @@ class ExtensionRunner:
             error_stream=error_line_str,
             recent_errors=deque(maxlen=1)
         )
+        logger.debug("Launched %s using Gio.Subprocess", extension_id)
 
         subproc.wait_async(None, self.handle_wait, extension_id)
         self.read_stderr_line(self.extension_procs[extension_id])

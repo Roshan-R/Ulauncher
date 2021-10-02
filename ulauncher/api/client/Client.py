@@ -2,7 +2,7 @@ import os
 import sys
 import logging
 import traceback
-from threading import Timer
+from functools import partial
 import gi
 
 gi.require_versions({
@@ -14,6 +14,7 @@ from gi.repository import GLib, Gio
 from ulauncher.api.shared.event import SystemExitEvent, RegisterEvent
 from ulauncher.api.shared.socket_path import get_socket_path
 from ulauncher.utils.framer import PickleFramer
+from ulauncher.utils.timer import timer
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class Client:
         logger.warning("Connection closed. Exiting")
         self.extension.trigger_event(SystemExitEvent())
         # extension has 0.5 sec to save it's state, after that it will be terminated
-        Timer(0.5, os._exit, args=[0]).start()
+        timer(0.5, partial(os._exit, 0))
 
     def send(self, response):
         """

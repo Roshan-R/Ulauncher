@@ -23,7 +23,6 @@ import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 
 from ulauncher.config import get_version, get_options, CACHE_DIR, CONFIG_DIR, DATA_DIR
-from ulauncher.utils.decorator.run_async import run_async
 from ulauncher.utils.wayland import is_wayland, is_wayland_compatibility_on
 from ulauncher.ui.windows.UlauncherWindow import UlauncherWindow
 from ulauncher.ui.AppIndicator import AppIndicator
@@ -150,7 +149,6 @@ def main():
         partial(reload_config, window),
         None
     )
-    # GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, graceful_exit, None)
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, graceful_exit, None)
 
     try:
